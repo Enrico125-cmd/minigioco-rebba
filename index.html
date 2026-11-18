@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rebba Snake</title>
+    <style>
+        :root {
+            --sfondo: #0b1120;
+            --card: #151e32;
+            --box: #1f2a44;
+            --bordo: #2d3a57;
+            --campo: #0f1729;
+            --accento: #4fd1c5;
+            --testo: #cbd5e0;
+            --testo-tenue: #8a97b0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--sfondo);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: var(--testo);
+            padding: 20px;
+        }
+
+        /* Card principale: campo a sinistra, pannello a destra */
+        .app {
+            display: flex;
+            gap: 25px;
+            background-color: var(--card);
+            padding: 25px;
+            border-radius: 20px;
+            border: 1px solid var(--bordo);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            max-width: 100%;
+        }
+
+        /* Campo di gioco (contiene il canvas e la schermata iniziale) */
+        .campo {
+            position: relative;
+        }
+        canvas {
+            display: block;
+            background-color: var(--campo);
+            border: 2px solid var(--bordo);
+            border-radius: 12px;
+            width: min(560px, calc(100vw - 90px), calc(100vh - 120px));
+            height: auto;
+        }
+
+        /* Schermata iniziale */
+        .schermata-iniziale {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background-color: rgba(11, 17, 32, 0.85);
+            backdrop-filter: blur(5px);
+            border-radius: 12px;
+            transition: opacity 0.4s ease;
+        }
+        .schermata-iniziale.nascosta {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .schermata-iniziale h2 {
+            font-size: 52px;
+            margin: 0 0 10px 0;
+            color: var(--accento);
+            letter-spacing: 2px;
+        }
+        .schermata-iniziale p {
+            margin: 0 0 25px 0;
+            color: var(--testo);
+            font-size: 17px;
+        }
+        .bottone-gioca {
+            background-color: var(--accento);
+            color: #0b1120;
+            border: none;
+            padding: 14px 50px;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .bottone-gioca:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 25px rgba(79, 209, 197, 0.5);
+        }
+        .schermata-iniziale small {
+            margin-top: 15px;
+            color: var(--testo-tenue);
+            font-size: 14px;
+        }
+
+        /* Pannello laterale */
+        .pannello {
+            width: 210px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+        h1 {
+            color: var(--accento);
+            margin: 0;
+            letter-spacing: 1px;
+        }
+        .barra {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .box {
+            background-color: var(--box);
+            border-radius: 12px;
+            padding: 12px;
+        }
+        .etichetta {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--testo-tenue);
+            margin-bottom: 2px;
+        }
+        .valore {
+            display: inline-block;
+            font-size: 34px;
+            font-weight: bold;
+            color: var(--accento);
+        }
+
+        .comandi {
+            background-color: var(--box);
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 14px;
+            color: var(--testo-tenue);
+            line-height: 1.8;
+        }
+        .tasto {
+            display: inline-block;
+            background-color: var(--sfondo);
+            border: 1px solid var(--bordo);
+            border-radius: 6px;
+            padding: 0 7px;
+            color: var(--testo);
+            font-weight: bold;
+        }
+
+        #messaggio {
+            font-size: 15px;
+            color: var(--testo);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* Bottone "Riprova": compare solo al game over */
+        .bottone-riprova {
+            display: none;
+            margin: 0 auto;
+            background-color: var(--accento);
+            color: #0b1120;
+            border: none;
+            padding: 10px 35px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .bottone-riprova.visibile {
+            display: block;
+        }
+        .bottone-riprova:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 20px rgba(79, 209, 197, 0.5);
+        }
+
+        /* Animazioni */
+        .pop {
+            animation: pop 0.3s ease;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1); }
+        }
+        .brilla {
+            animation: brilla 0.9s ease;
+        }
+        @keyframes brilla {
+            0% { background-color: var(--box); }
+            30% { background-color: #7a5c12; }
+            100% { background-color: var(--box); }
+        }
+
+        /* Schermi stretti: pannello sotto al campo */
+        @media (max-width: 860px) {
+            .app {
+                flex-direction: column;
+            }
+            .pannello {
+                width: 100%;
+            }
+            .barra {
+                flex-direction: row;
+            }
+            .box {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="campo">
+            <canvas id="gioco" width="560" height="560"></canvas>
+
+            <div class="schermata-iniziale" id="schermataIniziale">
+                <h2>🐍 Snake</h2>
+                <p>Mangia, cresci e non toccare i muri!</p>
+                <button class="bottone-gioca" onclick="inizia()">Gioca</button>
+                <small>oppure premi Spazio</small>
+            </div>
+        </div>
+
+        <div class="pannello">
+            <h1>Snake</h1>
+
+            <div class="barra">
+                <div class="box">
+                    <span class="etichetta">Punteggio</span>
+                    <span class="valore" id="punteggio">0</span>
+                </div>
+                <div class="box" id="boxRecord">
+                    <span class="etichetta">Record</span>
+                    <span class="valore" id="record">0</span>
+                </div>
+            </div>
+
+            <div class="comandi">
+                <span class="tasto">←</span> <span class="tasto">↑</span> <span class="tasto">↓</span> <span class="tasto">→</span><br>
+                per muoverti<br>
+                <span class="tasto">Spazio</span> per ricominciare
+            </div>
+
+            <p id="messaggio">Premi Gioca per iniziare</p>
+            <button class="bottone-riprova" id="bottoneRiprova" onclick="inizia()">Riprova</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gioco");
+        const ctx = canvas.getContext("2d");
+        const cella = 40;
+        const celle = canvas.width / cella;   // 14 celle per lato
+
+        const tipiCibo = ["🍎", "🍇", "🍔"];
+
+        const immagineTesta = new Image();
+        immagineTesta.src = "testa.jpeg";
+        const immagineTestaMangia = new Image();
+        immagineTestaMangia.src = "testamangia.jpeg";
+        const immagineTestaMorto = new Image();
+        immagineTestaMorto.src = "testamorto.jpeg";
+
+        immagineTesta.onload = disegna;
+        immagineTestaMangia.onload = disegna;
+        immagineTestaMorto.onload = disegna;
+
+        const elPunteggio = document.getElementById("punteggio");
+        const elRecord = document.getElementById("record");
+        const boxRecord = document.getElementById("boxRecord");
+        const elMessaggio = document.getElementById("messaggio");
+        const bottoneRiprova = document.getElementById("bottoneRiprova");
+        const schermataIniziale = document.getElementById("schermataIniziale");
+
+        let serpente, direzione, cibo, punteggio, intervallo;
+        let inGioco = false;
+        let mangiando = 0;
+        let morto = false;
+
+        let record = 0;
+        try {
+            record = parseInt(localStorage.getItem("snakeRecord")) || 0;
+        } catch (e) {}
+        let recordInizioPartita = record;
+        elRecord.textContent = record;
+
+        function animazione(elemento, classe) {
+            elemento.classList.remove(classe);
+            void elemento.offsetWidth;
+            elemento.classList.add(classe);
+        }
+
+        // Prepara tutto da capo senza far partire il gioco
+        function reset() {
+            serpente = [{ x: 7, y: 7 }];
+            direzione = { x: 0, y: 0 };
+            punteggio = 0;
+            mangiando = 0;
+            morto = false;
+            recordInizioPartita = record;
+            elPunteggio.textContent = punteggio;
+            nuovoCibo();
+            disegna();
+        }
+
+        // Fa partire una nuova partita
+        function inizia() {
+            clearInterval(intervallo);
+            reset();
+            inGioco = true;
+            schermataIniziale.classList.add("nascosta");
+            bottoneRiprova.classList.remove("visibile");
+            elMessaggio.textContent = "Usa le frecce per muoverti";
+            intervallo = setInterval(aggiorna, 130);
+        }
+
+        function nuovoCibo() {
+            do {
+                cibo = {
+                    x: Math.floor(Math.random() * celle),
+                    y: Math.floor(Math.random() * celle)
+                };
+            } while (serpente.some(function (p) { return p.x === cibo.x && p.y === cibo.y; }));
+        }
+
+        function aggiorna() {
+            if (direzione.x === 0 && direzione.y === 0) return;
+
+            if (mangiando > 0) mangiando--;
+
+            const testa = {
+                x: serpente[0].x + direzione.x,
+                y: serpente[0].y + direzione.y
+            };
+
+            if (testa.x < 0 || testa.x >= celle || testa.y < 0 || testa.y >= celle) {
+                return fine();
+            }
+
+            for (const pezzo of serpente) {
+                if (pezzo.x === testa.x && pezzo.y === testa.y) {
+                    return fine();
+                }
+            }
+
+            serpente.unshift(testa);
+
+            if (testa.x === cibo.x && testa.y === cibo.y) {
+                punteggio++;
+                mangiando = 4;
+                elPunteggio.textContent = punteggio;
+                animazione(elPunteggio, "pop");
+
+                if (punteggio > record) {
+                    record = punteggio;
+                    elRecord.textContent = record;
+                    animazione(elRecord, "pop");
+                    animazione(boxRecord, "brilla");
+                    try {
+                        localStorage.setItem("snakeRecord", record);
+                    } catch (e) {}
+                }
+
+                nuovoCibo();
+            } else {
+                serpente.pop();
+            }
+
+            disegna();
+        }
+
+        function disegnaFreccia() {
+            if (direzione.x === 0 && direzione.y === 0) return;
+
+            const centroX = serpente[0].x * cella + cella / 2;
+            const centroY = serpente[0].y * cella + cella / 2;
+
+            const distanza = cella / 2 + 9;
+            const px = centroX + direzione.x * distanza;
+            const py = centroY + direzione.y * distanza;
+            const d = 9;
+
+            ctx.fillStyle = "#faf089";
+            ctx.beginPath();
+            ctx.moveTo(px + direzione.x * d, py + direzione.y * d);
+            ctx.lineTo(px - direzione.x * d - direzione.y * d, py - direzione.y * d + direzione.x * d);
+            ctx.lineTo(px - direzione.x * d + direzione.y * d, py - direzione.y * d - direzione.x * d);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function disegna() {
+            if (!serpente) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // cibo a rotazione
+            const simboloCibo = tipiCibo[punteggio % tipiCibo.length];
+            ctx.font = (cella - 8) + "px serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(simboloCibo, cibo.x * cella + cella / 2, cibo.y * cella + cella / 2 + 1);
+
+            // corpo: sfumatura dal chiaro (vicino alla testa) allo scuro (coda)
+            const lunghezza = serpente.length;
+            for (let i = lunghezza - 1; i > 0; i--) {
+                const p = serpente[i];
+
+                const t = (lunghezza <= 2) ? 0 : (i - 1) / (lunghezza - 2);
+
+                const r = Math.round(246 + (156 - 246) * t);
+                const g = Math.round(173 + (66 - 173) * t);
+                const b = Math.round(85 + (33 - 85) * t);
+                ctx.fillStyle = "rgb(" + r + ", " + g + ", " + b + ")";
+
+                const raggio = cella / 2 - 3 - t * 5;
+
+                ctx.beginPath();
+                ctx.arc(p.x * cella + cella / 2, p.y * cella + cella / 2, raggio, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // testa
+            let img;
+            if (morto) {
+                img = immagineTestaMorto;
+            } else if (mangiando > 0) {
+                img = immagineTestaMangia;
+            } else {
+                img = immagineTesta;
+            }
+
+            if (img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, serpente[0].x * cella, serpente[0].y * cella, cella, cella);
+            } else {
+                // se l'immagine non si carica, disegna un cerchio azzurro al suo posto
+                ctx.fillStyle = "#4fd1c5";
+                ctx.beginPath();
+                ctx.arc(serpente[0].x * cella + cella / 2, serpente[0].y * cella + cella / 2, cella / 2 - 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (!morto) disegnaFreccia();
+        }
+
+        function fine() {
+            clearInterval(intervallo);
+            inGioco = false;
+            morto = true;
+            disegna();
+            bottoneRiprova.classList.add("visibile");
+
+            if (punteggio > recordInizioPartita) {
+                elMessaggio.textContent =
+                    "🏆 Nuovo record: " + punteggio + "! Premi Spazio per ricominciare";
+            } else {
+                elMessaggio.textContent =
+                    "Game over! Punteggio: " + punteggio + ". Premi Spazio per ricominciare";
+            }
+        }
+
+        document.addEventListener("keydown", function (e) {
+            if (e.key.startsWith("Arrow") || e.key === " ") {
+                e.preventDefault();
+            }
+
+            if (!inGioco) {
+                if (e.key === " " || e.key === "Enter") inizia();
+                return;
+            }
+
+            if (e.key === "ArrowUp" && direzione.y !== 1) direzione = { x: 0, y: -1 };
+            if (e.key === "ArrowDown" && direzione.y !== -1) direzione = { x: 0, y: 1 };
+            if (e.key === "ArrowLeft" && direzione.x !== 1) direzione = { x: -1, y: 0 };
+            if (e.key === "ArrowRight" && direzione.x !== -1) direzione = { x: 1, y: 0 };
+
+            disegna();
+        });
+
+        // All'apertura: prepara il campo e mostra la schermata iniziale
+        reset();
+    </script>
+</body>
+</html>
